@@ -15,13 +15,6 @@ const (
 	maxPageLimit     = 100
 )
 
-type categoryPage struct {
-	order     postgres.CategoryRevenueOrder
-	direction postgres.CategoryRevenueDirection
-	limit     int
-	offset    int
-}
-
 func parsePeriod(query url.Values) (time.Time, time.Time, error) {
 	rawFrom := query.Get("from")
 	if rawFrom == "" {
@@ -102,51 +95,4 @@ func parseLimitOffset(query url.Values) (int, int, error) {
 	}
 
 	return limit, offset, nil
-}
-
-func categoryPageFromQuery(query url.Values) (categoryPage, error) {
-	order := postgres.CategoryRevenueOrder(query.Get("order"))
-	if order == "" {
-		order = postgres.CategoryRevenueOrderRevenue
-	}
-	switch order {
-	case postgres.CategoryRevenueOrderRevenue, postgres.CategoryRevenueOrderCount:
-	default:
-		return categoryPage{}, fmt.Errorf("order must be revenue or count")
-	}
-
-	direction := postgres.CategoryRevenueDirection(query.Get("direction"))
-	if direction == "" {
-		direction = postgres.CategoryRevenueDirectionDesc
-	}
-	switch direction {
-	case postgres.CategoryRevenueDirectionAsc, postgres.CategoryRevenueDirectionDesc:
-	default:
-		return categoryPage{}, fmt.Errorf("direction must be asc or desc")
-	}
-
-	limit := defaultPageLimit
-	if raw := query.Get("limit"); raw != "" {
-		parsed, err := strconv.Atoi(raw)
-		if err != nil || parsed < 1 || parsed > maxPageLimit {
-			return categoryPage{}, fmt.Errorf("limit must be an integer between 1 and %d", maxPageLimit)
-		}
-		limit = parsed
-	}
-
-	offset := 0
-	if raw := query.Get("offset"); raw != "" {
-		parsed, err := strconv.Atoi(raw)
-		if err != nil || parsed < 0 {
-			return categoryPage{}, fmt.Errorf("offset must be a non-negative integer")
-		}
-		offset = parsed
-	}
-
-	return categoryPage{
-		order:     order,
-		direction: direction,
-		limit:     limit,
-		offset:    offset,
-	}, nil
 }

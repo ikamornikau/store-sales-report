@@ -1,12 +1,30 @@
 {
-  "name": "frontend",
+  "name": "store-sales-report",
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "files": ["dist-lib"],
+  "types": "./dist-lib/index.d.ts",
+  "module": "./dist-lib/store-sales-report.js",
+  "exports": {
+    ".": {
+      "types": "./dist-lib/index.d.ts",
+      "import": "./dist-lib/store-sales-report.js"
+    },
+    "./style.css": "./dist-lib/style.css"
+  },
+  "sideEffects": ["*.css", "**/*.css"],
+  "peerDependencies": {
+    "chart.js": "^4.6.1",
+    "vue": "^3.5.42",
+    "vue-chartjs": "^5.3.4"
+  },
   "scripts": {
     "dev": "vite",
     "build": "run-p type-check \"build-only {@}\" --",
+    "build:lib": "vite build --config vite.lib.config.ts && vue-tsc -p tsconfig.lib.json",
     "preview": "vite preview",
+    "test": "vitest run",
     "test:unit": "vitest",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
@@ -14,11 +32,6 @@
     "lint:oxlint": "oxlint . --fix",
     "lint:eslint": "eslint . --fix --cache",
     "format": "prettier --write --experimental-cli src/"
-  },
-  "dependencies": {
-    "chart.js": "^4.6.1",
-    "vue": "^3.5.42",
-    "vue-chartjs": "^5.3.4"
   },
   "devDependencies": {
     "@tsconfig/node24": "^24.0.5",
@@ -29,6 +42,7 @@
     "@vue/eslint-config-typescript": "^14.9.0",
     "@vue/test-utils": "^2.5.0",
     "@vue/tsconfig": "^0.9.1",
+    "chart.js": "^4.6.1",
     "eslint": "^10.10.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-oxlint": "~1.82.0",
@@ -42,6 +56,8 @@
     "vite": "^8.2.2",
     "vite-plugin-vue-devtools": "^8.2.1",
     "vitest": "^4.1.11",
+    "vue": "^3.5.42",
+    "vue-chartjs": "^5.3.4",
     "vue-eslint-parser": "^10.4.1",
     "vue-tsc": "^3.3.11"
   },

@@ -41,10 +41,31 @@ pnpm dev
 pnpm build
 ```
 
+### Build the embeddable library
+
+`ReportScreen` is published from this package as an ES module. `vue`, `chart.js`, and `vue-chartjs` stay outside the bundle. The app image is unchanged: `pnpm build` still writes the SPA to `dist`.
+
+```sh
+pnpm build:lib
+```
+
+In a Vue 3 host:
+
+```ts
+import { ReportScreen } from 'store-sales-report'
+import 'store-sales-report/style.css'
+```
+
+```vue
+<ReportScreen api-base-url="https://reports.example" />
+```
+
+Pass `locale` (`en`, `es`, or `fr`) and a `fetcher` (`typeof fetch`) when the host owns the language or the HTTP client.
+
 ### Run Unit Tests with [Vitest](https://vitest.dev/)
 
 ```sh
-pnpm test:unit
+npm test
 ```
 
 ### Lint with [ESLint](https://eslint.org/)

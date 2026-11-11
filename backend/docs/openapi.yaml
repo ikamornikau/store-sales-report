@@ -1,0 +1,445 @@
+openapi: 3.0.3
+info:
+  title: Store sales report
+  version: 0.1.0
+  description: |
+    Sales report for one store over a local calendar window.
+
+    Money is integer cents. A report day is a calendar date in the store timezone:
+    the window starts at `from` 00:00 and ends at the start of the day after `to`.
+    Revenue counts transactions with status `completed`. Refunded and voided
+    transactions appear only as counts on the summary.
+servers:
+  - url: http://localhost:8080
+tags:
+  - name: Stores
+  - name: Reports
+  - name: Probes
+paths:
+  /api/v1/stores/:
+    get:
+      tags: [Stores]
+      operationId: listStores
+      summary: List stores
+      description: |
+        The path requires the trailing slash. The response order is not defined.
+      responses:
+        "200":
+          description: Stores, possibly empty.
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestID"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Store"
+              example:
+                - id: S-1010
+                  name: Deli
+                  currency: USD
+                  timezone: America/New_York
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/stores/{store_id}/summary:
+    get:
+      tags: [Reports]
+      operationId: getTransactionSummary
+      summary: Transaction summary
+      parameters:
+        - $ref: "#/components/parameters/StoreID"
+        - $ref: "#/components/parameters/From"
+        - $ref: "#/components/parameters/To"
+      responses:
+        "200":
+          description: Totals for the window.
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Summary"
+              example:
+                currency: USD
+                revenue_cents: 1540320
+                transaction_count: 812
+                refunded_count: 14
+                voided_count: 6
+                average_basket_cents: 1897
+                items_sold: 2404
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/StoreNotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/stores/{store_id}/revenue/daily:
+    get:
+      tags: [Reports]
+      operationId: getDailyRevenue
+      summary: Daily completed revenue
+      description: |
+        One point for every calendar day from `from` through `to`, inclusive,
+        ordered by day. A day with no completed sales has `revenue_cents` 0.
+      parameters:
+        - $ref: "#/components/parameters/StoreID"
+        - $ref: "#/components/parameters/From"
+        - $ref: "#/components/parameters/To"
+      responses:
+        "200":
+          description: Daily series in the store timezone.
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyRevenue"
+              example:
+                currency: USD
+                timezone: America/New_York
+                points:
+                  - day: "2026-11-10"
+                    revenue_cents: 48210
+                  - day: "2026-11-11"
+                    revenue_cents: 0
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/StoreNotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/v1/stores/{store_id}/revenue/category:
+    get:
+      tags: [Reports]
+      operationId: listCategoryRevenue
+      summary: Completed revenue by category
+      description: |
+        Categories with no completed sales in the window are omitted.
+        `total` is the number of categories in the window, not the page length.
+        Rows are ordered by the requested column, then by `category` ascending.
+      parameters:
+        - $ref: "#/components/parameters/StoreID"
+        - $ref: "#/components/parameters/From"
+        - $ref: "#/components/parameters/To"
+        - $ref: "#/components/parameters/OrderBy"
+        - $ref: "#/components/parameters/Direction"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: One page of categories.
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryRevenuePage"
+              example:
+                currency: USD
+                total: 6
+                items:
+                  - category: grocery
+                    revenue_cents: 640200
+                    transaction_count: 310
+                  - category: beverages
+                    revenue_cents: 210050
+                    transaction_count: 188
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/StoreNotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /health:
+    get:
+      tags: [Probes]
+      operationId: health
+      summary: Process is up
+      responses:
+        "200":
+          description: Process is serving.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: OK
+
+  /ready:
+    get:
+      tags: [Probes]
+      operationId: ready
+      summary: Process is accepting traffic
+      description: Returns 503 after the process has begun shutdown.
+      responses:
+        "200":
+          description: Ready.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: OK
+        "503":
+          description: Shutting down.
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /metrics:
+    get:
+      tags: [Probes]
+      operationId: metrics
+      summary: Prometheus metrics
+      responses:
+        "200":
+          description: Prometheus text exposition.
+          content:
+            text/plain:
+              schema:
+                type: string
+
+components:
+  parameters:
+    StoreID:
+      name: store_id
+      in: path
+      required: true
+      description: Store identifier, for example `S-1010`.
+      schema:
+        type: string
+    From:
+      name: from
+      in: query
+      required: true
+      description: First calendar day of the window, inclusive. `YYYY-MM-DD`.
+      schema:
+        type: string
+        format: date
+        example: "2026-08-13"
+    To:
+      name: to
+      in: query
+      required: true
+      description: |
+        Last calendar day of the window, inclusive. `YYYY-MM-DD`.
+        Must be on or after `from`. The difference must be at most 92 days.
+      schema:
+        type: string
+        format: date
+        example: "2026-11-11"
+    OrderBy:
+      name: order_by
+      in: query
+      required: false
+      description: Sort column. Defaults to `revenue`.
+      schema:
+        $ref: "#/components/schemas/CategoryOrder"
+    Direction:
+      name: direction
+      in: query
+      required: false
+      description: Sort direction. Defaults to `desc`.
+      schema:
+        type: string
+        enum: [asc, desc]
+        default: desc
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: Page size. Defaults to 20. Maximum 100.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Offset:
+      name: offset
+      in: query
+      required: false
+      description: Number of categories to skip. Defaults to 0.
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+
+  headers:
+    RequestID:
+      description: |
+        Echoes the request `X-Request-ID` when the client sent one.
+        Otherwise a new id.
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: |
+        A query parameter is missing or invalid. The body is one of:
+
+        - `param from is required`
+        - `param to is required`
+        - `param from should be a date in YYYY-MM-DD`
+        - `param to should be a date in YYYY-MM-DD`
+        - `param from should not be after to`
+        - `date range should not exceed 92 days`
+        - `order should be revenue or count`
+        - `direction should be asc or desc`
+        - `limit should be an integer between 1 and 100`
+        - `offset should be a non-negative integer`
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestID"
+      content:
+        text/plain:
+          schema:
+            type: string
+          example: date range should not exceed 92 days
+    StoreNotFound:
+      description: No store has this id.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestID"
+      content:
+        text/plain:
+          schema:
+            type: string
+            example: store not found
+    InternalError:
+      description: The request failed while reading or encoding data.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestID"
+      content:
+        text/plain:
+          schema:
+            type: string
+
+  schemas:
+    Store:
+      type: object
+      required: [id, name, currency, timezone]
+      properties:
+        id:
+          type: string
+          example: S-1010
+        name:
+          type: string
+          example: Deli
+        currency:
+          $ref: "#/components/schemas/Currency"
+        timezone:
+          type: string
+          description: IANA timezone name.
+          example: America/New_York
+
+    Currency:
+      type: string
+      enum: [USD, CAD]
+
+    Summary:
+      type: object
+      required:
+        - currency
+        - revenue_cents
+        - transaction_count
+        - refunded_count
+        - voided_count
+        - items_sold
+      properties:
+        currency:
+          $ref: "#/components/schemas/Currency"
+        revenue_cents:
+          type: integer
+          format: int64
+          description: Sum of `total_cents` for completed transactions.
+        transaction_count:
+          type: integer
+          format: int64
+          description: Number of completed transactions.
+        refunded_count:
+          type: integer
+          format: int64
+        voided_count:
+          type: integer
+          format: int64
+        average_basket_cents:
+          type: integer
+          format: int64
+          description: |
+            `revenue_cents / transaction_count`, rounded to the nearest cent.
+            Omitted when that value is 0.
+        items_sold:
+          type: integer
+          format: int64
+          description: Sum of `items_count` for completed transactions.
+
+    DailyRevenue:
+      type: object
+      required: [currency, timezone, points]
+      properties:
+        currency:
+          $ref: "#/components/schemas/Currency"
+        timezone:
+          type: string
+          description: IANA timezone name used to bucket each day.
+          example: America/New_York
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyPoint"
+
+    DailyPoint:
+      type: object
+      required: [day, revenue_cents]
+      properties:
+        day:
+          type: string
+          format: date
+        revenue_cents:
+          type: integer
+          format: int64
+
+    CategoryRevenuePage:
+      type: object
+      required: [currency, total, items]
+      properties:
+        currency:
+          $ref: "#/components/schemas/Currency"
+        total:
+          type: integer
+          minimum: 0
+          description: Categories with completed sales in the window.
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryRevenue"
+
+    CategoryRevenue:
+      type: object
+      required: [category, revenue_cents, transaction_count]
+      properties:
+        category:
+          $ref: "#/components/schemas/Category"
+        revenue_cents:
+          type: integer
+          format: int64
+        transaction_count:
+          type: integer
+          format: int64
+
+    Category:
+      type: string
+      enum: [beverages, snacks, tobacco, grocery, lottery, household]
+
+    CategoryOrder:
+      type: string
+      enum: [revenue, count]
+      default: revenue

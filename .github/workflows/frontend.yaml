@@ -64,7 +64,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Test
-        run: pnpm exec vitest run
+        run: pnpm test
 
   image:
     name: Image
