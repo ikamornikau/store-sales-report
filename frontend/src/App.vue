@@ -7,3 +7,13 @@ const apiBaseUrl = window.location.origin
 <template>
   <ReportScreen :api-base-url="apiBaseUrl" />
 </template>
+
+<style>
+html,
+body,
+#app {
+  margin: 0;
+  min-height: 100%;
+  background: #f3f0e8;
+}
+</style>

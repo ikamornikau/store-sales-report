@@ -1,0 +1,2 @@
+DROP INDEX transactions_store_status_created_at_idx;
+DROP INDEX transactions_store_created_at_idx;

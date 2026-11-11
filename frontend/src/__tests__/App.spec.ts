@@ -8,11 +8,14 @@ describe('App', () => {
     vi.unstubAllGlobals()
   })
 
-  it('shows the stores response text', async () => {
+  it('loads the report screen from this origin', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
-        text: () => Promise.resolve('Hello from stores list handler!'),
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve([]),
+        text: () => Promise.resolve('[]'),
       }),
     )
 
@@ -21,6 +24,8 @@ describe('App', () => {
 
     const request = vi.mocked(fetch).mock.calls[0]?.[0]
     expect(String(request)).toBe(`${window.location.origin}/api/v1/stores/`)
-    expect(wrapper.text()).toContain('Hello from stores list handler!')
+    expect(wrapper.text()).toContain('Store sales')
+    expect(wrapper.text()).toContain('No stores are available.')
+    wrapper.unmount()
   })
 })
