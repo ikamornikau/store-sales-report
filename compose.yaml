@@ -25,12 +25,20 @@ services:
       - postgres://store:store@postgres:5432/store_sales_report?sslmode=disable
       - up
 
+  seed:
+    build: ./backend/scripts/seed
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    command:
+      - postgres://store:store@postgres:5432/store_sales_report?sslmode=disable
+
   backend:
     build: ./backend
     ports:
       - "8080:8080"
     depends_on:
-      migrate:
+      seed:
         condition: service_completed_successfully
 
   frontend:
