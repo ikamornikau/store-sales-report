@@ -4,3 +4,5 @@ server:
   read_timeout: 15s
   write_timeout: 10s
   idle_timeout: 90s
+postgres:
+  url: postgres://store:store@postgres:5432/store_sales_report?sslmode=disable

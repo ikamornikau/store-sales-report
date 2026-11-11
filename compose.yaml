@@ -1,8 +1,37 @@
 services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: store
+      POSTGRES_PASSWORD: store
+      POSTGRES_DB: store_sales_report
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U store -d store_sales_report"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  migrate:
+    build: ./backend/scripts/migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      - -database
+      - postgres://store:store@postgres:5432/store_sales_report?sslmode=disable
+      - up
+
   backend:
     build: ./backend
     ports:
       - "8080:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
 
   frontend:
     build: ./frontend
@@ -18,3 +47,6 @@ services:
           sleep 0.5
         done
         exec /docker-entrypoint.sh nginx -g 'daemon off;'
+
+volumes:
+  postgres:

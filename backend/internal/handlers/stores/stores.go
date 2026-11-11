@@ -1,24 +1,28 @@
 package stores
 
 import (
-	"fmt"
+	"context"
 	"net/http"
 
+	"github.com/ikamornikau/store-sales-report/backend/internal/adapters/postgres"
+	"github.com/ikamornikau/store-sales-report/backend/internal/handlers"
 	mw "github.com/ikamornikau/store-sales-report/backend/internal/middlewares"
 )
 
-type stores struct{}
+type storage interface {
+	GetStores(ctx context.Context) ([]postgres.Store, error)
+}
 
-func NewHandler() stores {
-	return stores{}
+type stores struct {
+	storage storage
+}
+
+func NewHandler(storage storage) stores {
+	return stores{storage: storage}
 }
 
 func (s stores) Mount(prefix string, mux *http.ServeMux, middlewares ...func(http.Handler) http.Handler) {
-	mux.Handle(makeRoute(prefix, "GET", "/{$}"),
+	mux.Handle(handlers.MakeRoute(prefix, "GET", "/{$}"),
 		mw.Chain(http.HandlerFunc(s.List), middlewares...),
 	)
-}
-
-func makeRoute(prefix, method, pattern string) string {
-	return fmt.Sprintf("%s %s%s", method, prefix, pattern)
 }
